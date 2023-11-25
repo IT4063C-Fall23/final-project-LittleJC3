@@ -69,7 +69,7 @@ else:
 
 # ## Checking to See if any Duplicate or Missing Values
 
-# In[8]:
+# In[2]:
 
 
 # Checking for Duplicate and Missing Values for the cleanmotorvehicleaccidents.csv file
@@ -95,7 +95,7 @@ else:
     print("No missing values found.")
 
 
-# In[9]:
+# In[3]:
 
 
 # Checking for Duplicate and Missing Values for the Motor_Vehicle_Collisions_-_Crashes.csv file
@@ -123,7 +123,7 @@ else:
 
 # ### Since there are a multitude of missing values, I decided to keep them since I felt they were not construing the actual data. While extra data may not be present, it doesn't mean that the accidents didn't happen.
 
-# In[11]:
+# In[4]:
 
 
 import requests
@@ -164,7 +164,7 @@ else:
     print(f"Request failed with status code: {response.status_code}")
 
 
-# In[18]:
+# In[5]:
 
 
 import pandas as pd
@@ -188,7 +188,7 @@ plt.show()
 
 # #### The graph above correlates the number of accidents that occurred when the driver was intoxicated via alcohol vs drugs. I used a bar chart to easily show the numbers.
 
-# In[25]:
+# In[6]:
 
 
 import pandas as pd
@@ -213,7 +213,7 @@ plt.show()
 
 # #### This chart goes even further beyond and breaks down crashes into more specific categories. I chose a histogram because it suits the type of data I wish to display
 
-# In[29]:
+# In[7]:
 
 
 import pandas as pd
@@ -238,7 +238,7 @@ plt.show()
 
 # Again, I used a Bar Graph to easily show the number of deaths per Borough. Surprisingly, the most deaths occurred in Brooklyn and Queens instead of Manhattan, which is what I originally guessed would be the highest.
 
-# In[52]:
+# In[8]:
 
 
 import requests
@@ -292,12 +292,194 @@ except requests.RequestException as e:
 
 # #### This chart shows that the more fatalaties occur when there are more people in the vehicle. I had a lot of issues with the API call (hence the try/except) but I was able to narrow down the call with the right parameters being passed.
 
+# In[6]:
+
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+
+# Load the data from the CSV file - only first 5000 rows.
+file_path = 'Motor_Vehicle_Collisions_-_Crashes.csv'
+columns_to_use = ['CRASH DATE', 'CRASH TIME', 'BOROUGH', 'LATITUDE', 'LONGITUDE', 'NUMBER OF PERSONS INJURED', 'NUMBER OF PERSONS KILLED', 'NUMBER OF PEDESTRIANS INJURED', 'NUMBER OF PEDESTRIANS KILLED', 'NUMBER OF CYCLIST INJURED', 'NUMBER OF CYCLIST KILLED', 'NUMBER OF MOTORIST INJURED', 'NUMBER OF MOTORIST KILLED', 'CONTRIBUTING FACTOR VEHICLE 1', 'CONTRIBUTING FACTOR VEHICLE 2', 'CONTRIBUTING FACTOR VEHICLE 3', 'CONTRIBUTING FACTOR VEHICLE 4', 'CONTRIBUTING FACTOR VEHICLE 5', 'VEHICLE TYPE CODE 1', 'VEHICLE TYPE CODE 2', 'VEHICLE TYPE CODE 3', 'VEHICLE TYPE CODE 4', 'VEHICLE TYPE CODE 5']
+data = pd.read_csv(file_path, usecols=columns_to_use, nrows=5000)
+
+features = data.drop('CRASH DATE', axis=1)  # Remove 'CRASH DATE' due to type issues
+target = data['NUMBER OF PERSONS INJURED'] 
+
+# 80% training, 20% test
+train_features, test_features, train_target, test_target = train_test_split(features, target, test_size=0.2, random_state=42)
+
+
+numeric_features = ['LATITUDE', 'LONGITUDE', 'NUMBER OF PERSONS INJURED', 'NUMBER OF PERSONS KILLED', 'NUMBER OF PEDESTRIANS INJURED', 'NUMBER OF PEDESTRIANS KILLED', 'NUMBER OF CYCLIST INJURED', 'NUMBER OF CYCLIST KILLED', 'NUMBER OF MOTORIST INJURED', 'NUMBER OF MOTORIST KILLED']
+numeric_transform = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='mean')),
+    ('scaler', StandardScaler())
+])
+
+categorical_features = ['CRASH TIME', 'BOROUGH', 'CONTRIBUTING FACTOR VEHICLE 1', 'CONTRIBUTING FACTOR VEHICLE 2', 'CONTRIBUTING FACTOR VEHICLE 3', 'CONTRIBUTING FACTOR VEHICLE 4', 'CONTRIBUTING FACTOR VEHICLE 5', 'VEHICLE TYPE CODE 1', 'VEHICLE TYPE CODE 2', 'VEHICLE TYPE CODE 3', 'VEHICLE TYPE CODE 4', 'VEHICLE TYPE CODE 5']
+categorical_transform = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transform, numeric_features),
+        ('cat', categorical_transform, categorical_features)
+    ])
+
+# Create a complete pipeline 
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier() 
+
+# full pipeline
+pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                           ('model', model)])
+
+# training data
+pipeline.fit(train_features, train_target)
+
+# test data
+accuracy = pipeline.score(test_features, test_target)
+print(f"Accuracy on test set: {accuracy}")
+
+
+# In[8]:
+
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+
+
+file_path = 'cleanmotorvehicleaccidents.csv'
+columns_to_use = ['Town', 'FIPS', 'Year', 'Abused Substance', 'Outcome', 'Measure Type', 'Variable', 'Value']
+data = pd.read_csv(file_path, usecols=columns_to_use)
+
+# Define features and target variable
+features = data.drop('Outcome', axis=1)  # Assuming 'Outcome' is the target variable
+target = data['Outcome']
+
+# Split the data into training and test sets
+train_features, test_features, train_target, test_target = train_test_split(features, target, test_size=0.2, random_state=42)
+
+# Preprocessing pipelines for numerical and categorical features
+numeric_features = ['Year', 'Value']  
+numeric_transform = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='mean')),
+    ('scaler', StandardScaler())
+])
+
+categorical_features = ['Town', 'FIPS', 'Abused Substance', 'Measure Type', 'Variable']  
+categorical_transform = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('onehot', OneHotEncoder(handle_unknown='ignore'))
+])
+
+# Combine preprocessing 
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transform, numeric_features),
+        ('cat', categorical_transform, categorical_features)
+    ])
+
+# Define the model
+model = RandomForestClassifier()
+
+# Create the full pipeline
+pipeline = Pipeline(steps=[('preprocessor', preprocessor),
+                           ('model', model)])
+
+# Fit the pipeline on the training data
+pipeline.fit(train_features, train_target)
+
+# Evaluate the pipeline on the test data
+predictions = pipeline.predict(test_features)
+accuracy = accuracy_score(test_target, predictions)
+print(f"Accuracy on test set: {accuracy}")
+print("Training Features:")
+print(train_features.head())  # Display the first few rows of the training features
+print("\nTraining Target:")
+print(train_target.head())  # Display the first few rows of the training target
+
+print("\nTest Features:")
+print(test_features.head())  # Display the first few rows of the test features
+print("\nTest Target:")
+print(test_target.head())  # Display the first few rows of the test target
+
+
+# In[12]:
+
+
+import requests
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+
+url = "https://crashviewer.nhtsa.dot.gov/CrashAPI/crashes/GetCaseList"
+
+# Parameters for the API call
+params = {
+    'states': '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51',
+    'fromYear': '2014',
+    'toYear': '2015',
+    'minNumOfVehicles': '1',
+    'maxNumOfVehicles': '6',
+    'format': 'json'
+}
+
+try:
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+
+        fatals = []
+        persons = []
+
+        # Get 'fatals' and 'persons' from nested lists of dictionaries
+        for sublist in data['Results']:
+            for entry in sublist:
+                if 'Fatals' in entry and 'Persons' in entry:
+                    fatals.append(entry['Fatals'])
+                    persons.append(entry['Persons'])
+
+        # Split the data into training and test sets
+        fatals_train, fatals_test, persons_train, persons_test = train_test_split(fatals, persons, test_size=0.2, random_state=42)
+
+        # Plotting for both training and test data
+        plt.figure(figsize=(8, 6))
+        plt.scatter(fatals_train, persons_train, color='blue', alpha=0.5, label='Training Data')
+        plt.scatter(fatals_test, persons_test, color='red', alpha=0.5, label='Test Data')
+        plt.title('Fatal Crashes By Car Occupants')
+        plt.xlabel('Fatalities')
+        plt.ylabel('People in Car')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+    else:
+        print(f"Request failed with status code: {response.status_code}")
+
+except requests.RequestException as e:
+    print(f"Request failed: {e}")
+
+
 # ## Resources and References
 # *What resources and references have you used for this project?*
 # 📝 <!-- Answer Below -->
-# Stack Overflow, Python Documentation, the API information from the site at the top, Geeks for Geeks, various forums
+# Stack Overflow, Python Documentation, the API information from the site at the top, Geeks for Geeks, various forums, W3Schools, Sklearn model documentation
 
-# In[53]:
+# In[13]:
 
 
 # ⚠️ Make sure you run this cell at the end of your notebook before every submission!
