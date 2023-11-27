@@ -47,7 +47,7 @@
 # 
 # This demonstrates the call, but I will be using the data to identify common trends as to what causes the most accidents and crashes.
 
-# In[1]:
+# In[24]:
 
 
 # Start your code here
@@ -69,7 +69,7 @@ else:
 
 # ## Checking to See if any Duplicate or Missing Values
 
-# In[2]:
+# In[25]:
 
 
 # Checking for Duplicate and Missing Values for the cleanmotorvehicleaccidents.csv file
@@ -95,7 +95,7 @@ else:
     print("No missing values found.")
 
 
-# In[3]:
+# In[26]:
 
 
 # Checking for Duplicate and Missing Values for the Motor_Vehicle_Collisions_-_Crashes.csv file
@@ -123,7 +123,7 @@ else:
 
 # ### Since there are a multitude of missing values, I decided to keep them since I felt they were not construing the actual data. While extra data may not be present, it doesn't mean that the accidents didn't happen.
 
-# In[4]:
+# In[27]:
 
 
 import requests
@@ -164,7 +164,9 @@ else:
     print(f"Request failed with status code: {response.status_code}")
 
 
-# In[5]:
+# ### The code below creates a chart for the number of accidents based on the abused substance.
+
+# In[28]:
 
 
 import pandas as pd
@@ -186,9 +188,9 @@ plt.tight_layout()
 plt.show()
 
 
-# #### The graph above correlates the number of accidents that occurred when the driver was intoxicated via alcohol vs drugs. I used a bar chart to easily show the numbers.
+# #### This chart goes even further beyond and breaks down crashes into more specific categories. I chose a histogram because it suits the type of data I wish to display
 
-# In[6]:
+# In[29]:
 
 
 import pandas as pd
@@ -211,9 +213,9 @@ plt.tight_layout()
 plt.show()
 
 
-# #### This chart goes even further beyond and breaks down crashes into more specific categories. I chose a histogram because it suits the type of data I wish to display
+# ### Again, I used a Bar Graph to easily show the number of deaths per Borough. Surprisingly, the most deaths occurred in Brooklyn and Queens instead of Manhattan, which is what I originally guessed would be the highest.
 
-# In[7]:
+# In[30]:
 
 
 import pandas as pd
@@ -236,9 +238,9 @@ plt.tight_layout()
 plt.show()
 
 
-# Again, I used a Bar Graph to easily show the number of deaths per Borough. Surprisingly, the most deaths occurred in Brooklyn and Queens instead of Manhattan, which is what I originally guessed would be the highest.
+# #### This chart shows that the more fatalaties occur when there are more people in the vehicle. I had a lot of issues with the API call (hence the try/except) but I was able to narrow down the call with the right parameters being passed.
 
-# In[8]:
+# In[31]:
 
 
 import requests
@@ -290,9 +292,9 @@ except requests.RequestException as e:
     print(f"Request failed: {e}")
 
 
-# #### This chart shows that the more fatalaties occur when there are more people in the vehicle. I had a lot of issues with the API call (hence the try/except) but I was able to narrow down the call with the right parameters being passed.
+# #### The next few blocks of code are all about creating test and training sets of data. This one in specific applies to the Motor_Vehicle_Collisions_-_Crashes.csv
 
-# In[6]:
+# In[32]:
 
 
 import pandas as pd
@@ -333,7 +335,7 @@ preprocessor = ColumnTransformer(
         ('cat', categorical_transform, categorical_features)
     ])
 
-# Create a complete pipeline 
+# Create a pipeline 
 from sklearn.ensemble import RandomForestClassifier
 model = RandomForestClassifier() 
 
@@ -349,7 +351,65 @@ accuracy = pipeline.score(test_features, test_target)
 print(f"Accuracy on test set: {accuracy}")
 
 
-# In[8]:
+# #### Here we create a bar graph that displays which time of day a crash is more likely to occur. The lighter color resembles an injury while the darker color resembles a death.
+
+# In[33]:
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Convert 'CRASH TIME' to datetime
+data['CRASH TIME'] = pd.to_datetime(data['CRASH TIME'])
+
+# Extract hour from 'CRASH TIME'
+data['CRASH HOUR'] = data['CRASH TIME'].dt.hour
+
+# Define custom intervals (1-hour intervals in military time)
+custom_intervals = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8),
+                    (8, 9), (9, 10), (10, 11), (11, 12), (12, 13), (13, 14), (14, 15),
+                    (15, 16), (16, 17), (17, 18), (18, 19), (19, 20), (20, 21), (21, 22), (22, 23), (23, 24)]
+
+# Function to map hour to custom intervals
+def map_to_intervals(hour):
+    for interval in custom_intervals:
+        if hour in range(interval[0], interval[1]):
+            return f"{interval[0]}-{interval[1]}"
+
+# Apply the function to create intervals based on hours
+data['TIME INTERVAL'] = data['CRASH HOUR'].apply(map_to_intervals)
+
+# Extracting required columns for plotting
+time_injuries = data[['TIME INTERVAL', 'NUMBER OF PERSONS INJURED', 'NUMBER OF PERSONS KILLED']]
+
+# Grouping by 'TIME INTERVAL' and summing the injuries and fatalities
+time_injuries = time_injuries.groupby('TIME INTERVAL').sum().reset_index()
+
+# Define the categorical order of time intervals
+interval_order = [f"{interval[0]}-{interval[1]}" for interval in custom_intervals]
+
+# Convert 'TIME INTERVAL' column to categorical with defined order
+time_injuries['TIME INTERVAL'] = pd.Categorical(time_injuries['TIME INTERVAL'], categories=interval_order, ordered=True)
+
+# Sort the DataFrame by the categorical column order
+time_injuries = time_injuries.sort_values('TIME INTERVAL')
+
+# Plotting the counts of injuries and fatalities based on custom time intervals
+plt.figure(figsize=(12, 6))
+sns.barplot(x='TIME INTERVAL', y='NUMBER OF PERSONS INJURED', data=time_injuries, palette='pastel')
+sns.barplot(x='TIME INTERVAL', y='NUMBER OF PERSONS KILLED', data=time_injuries, palette='deep')
+plt.xlabel('Time Interval')
+plt.ylabel('Count')
+plt.title('Number of Persons Injured (Light) vs Number of Persons Killed by Time Interval (Dark)')
+plt.xticks(rotation=45)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+
+# #### This is another test/train set, but applies to the cleanmotorvehicleaccidents.csv file.
+
+# In[34]:
 
 
 import pandas as pd
@@ -360,6 +420,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 file_path = 'cleanmotorvehicleaccidents.csv'
@@ -373,7 +435,7 @@ target = data['Outcome']
 # Split the data into training and test sets
 train_features, test_features, train_target, test_target = train_test_split(features, target, test_size=0.2, random_state=42)
 
-# Preprocessing pipelines for numerical and categorical features
+# Preprocessing pipelines 
 numeric_features = ['Year', 'Value']  
 numeric_transform = Pipeline(steps=[
     ('imputer', SimpleImputer(strategy='mean')),
@@ -418,7 +480,43 @@ print("\nTest Target:")
 print(test_target.head())  # Display the first few rows of the test target
 
 
-# In[12]:
+
+# #### This chart is linked to the above data. It displays, in a visual format, the differences in accuracy between the two sets.
+
+# In[35]:
+
+
+train_predictions = pipeline.predict(train_features)
+test_predictions = pipeline.predict(test_features)
+
+# Calculate accuracies
+train_accuracy = accuracy_score(train_target, train_predictions)
+test_accuracy = accuracy_score(test_target, test_predictions)
+
+train_results = pd.DataFrame({'Outcome': train_target, 'Prediction': train_predictions})
+test_results = pd.DataFrame({'Outcome': test_target, 'Prediction': test_predictions})
+
+fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+
+# Plotting for training set
+sns.countplot(x='Outcome', data=train_results, ax=axes[0])
+axes[0].set_title('Training Set - Outcomes')
+axes[0].set_xlabel('Outcome')
+axes[0].set_ylabel('Count')
+
+# Plotting for test set
+sns.countplot(x='Outcome', data=test_results, ax=axes[1])
+axes[1].set_title('Test Set - Outcomes')
+axes[1].set_xlabel('Outcome')
+axes[1].set_ylabel('Count')
+
+plt.tight_layout()
+plt.show()
+
+
+# #### This is our last source that we are using. It creates a test/training set but via the API source called crashviewer. Additionally, it displays the differences between the sets and displays similarities. The more purple a dot is, the more that the two sets converged.
+
+# In[36]:
 
 
 import requests
@@ -479,7 +577,7 @@ except requests.RequestException as e:
 # 📝 <!-- Answer Below -->
 # Stack Overflow, Python Documentation, the API information from the site at the top, Geeks for Geeks, various forums, W3Schools, Sklearn model documentation
 
-# In[13]:
+# In[ ]:
 
 
 # ⚠️ Make sure you run this cell at the end of your notebook before every submission!
